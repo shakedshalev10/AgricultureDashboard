@@ -1,0 +1,1556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgriMonitor Command Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@700;900&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#f2efe8;
+  --panel:#fbfaf7;
+  --card:#ffffff;
+  --line:#e3ddd1;
+  --text:#1f241f;
+  --muted:#666357;
+  --soft:#918a7a;
+  --green:#1a7742;
+  --green-soft:#ccebd8;
+  --orange:#bf6a22;
+  --orange-soft:#f8e5d4;
+  --blue:#245b9f;
+  --blue-soft:#d7e5f8;
+  --red:#b63a37;
+  --red-soft:#f4d7d3;
+  --slate:#ece7dc;
+  --shadow:0 14px 38px rgba(40,36,28,.08);
+  --sidebar:86px;
+  --header:58px;
+}
+body{
+  font-family:'IBM Plex Sans',sans-serif;
+  background:
+    radial-gradient(circle at top right, rgba(36,91,159,.09), transparent 24%),
+    radial-gradient(circle at top left, rgba(26,119,66,.08), transparent 30%),
+    var(--bg);
+  color:var(--text);
+  line-height:1.45;
+  height:100vh;
+  overflow:hidden;
+}
+.topbar{
+  position:fixed;
+  inset:0 0 auto 0;
+  height:var(--header);
+  background:rgba(255,255,255,.9);
+  backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 22px 0 24px;
+  z-index:30;
+}
+.brand{display:flex;align-items:center;gap:14px}
+.brand-mark{
+  width:34px;height:34px;border-radius:11px;
+  background:linear-gradient(135deg,var(--green),#2e9358);
+  color:#fff;display:flex;align-items:center;justify-content:center;
+  font-size:18px;box-shadow:0 10px 20px rgba(26,119,66,.18)
+}
+.brand-copy h1{
+  font-family:'Fraunces',serif;
+  font-size:19px;
+  line-height:1;
+  color:var(--green);
+}
+.brand-copy p{font-size:11px;color:var(--muted);margin-top:2px}
+.top-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.badge{
+  padding:6px 10px;border-radius:999px;
+  font-size:11px;font-weight:700;
+  background:var(--green-soft);color:var(--green)
+}
+.badge.alert{background:var(--red-soft);color:var(--red)}
+.meta-chip{
+  padding:6px 10px;border-radius:10px;background:#fff;border:1px solid var(--line);
+  font-size:11px;color:var(--muted);font-weight:600
+}
+.sidebar{
+  position:fixed;
+  top:var(--header);
+  left:0;
+  bottom:0;
+  width:var(--sidebar);
+  background:rgba(255,255,255,.86);
+  backdrop-filter:blur(12px);
+  border-right:1px solid var(--line);
+  padding:14px 10px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  z-index:20;
+}
+.nav-btn{
+  border:0;
+  background:transparent;
+  border-radius:16px;
+  padding:12px 8px;
+  color:var(--soft);
+  font:inherit;
+  font-size:10px;
+  font-weight:700;
+  cursor:pointer;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+  transition:.18s;
+}
+.nav-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8}
+.nav-btn:hover,.nav-btn.active{background:var(--green-soft);color:var(--green)}
+.content{
+  margin-top:var(--header);
+  margin-left:var(--sidebar);
+  height:calc(100vh - var(--header));
+}
+.page{
+  display:none;
+  height:100%;
+  overflow-y:auto;
+  padding:18px 20px 80px;
+}
+.page.active{display:block}
+.section-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-end;margin-bottom:14px;flex-wrap:wrap}
+.section-head h2{
+  font-family:'Fraunces',serif;
+  font-size:26px;
+  line-height:1;
+  color:#1f3d28;
+}
+.section-head p{font-size:13px;color:var(--muted);max-width:760px}
+.grid{display:grid;gap:14px}
+.grid.kpis{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:14px}
+.grid.main{grid-template-columns:minmax(0,1.6fr) minmax(290px,.9fr);align-items:stretch}
+.grid.cards3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.grid.charts2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.grid.story{grid-template-columns:repeat(3,minmax(0,1fr))}
+.grid.context{grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr)}
+.grid.sensors{grid-template-columns:minmax(0,1.25fr) minmax(320px,.75fr)}
+.card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:22px;
+  padding:18px;
+  box-shadow:var(--shadow);
+  position:relative;
+  overflow:hidden;
+}
+.card::before{
+  content:"";
+  position:absolute;
+  inset:0 auto auto 0;
+  width:100%;
+  height:4px;
+  background:linear-gradient(90deg,rgba(26,119,66,.8),rgba(36,91,159,.45));
+}
+.card.orange::before{background:linear-gradient(90deg,var(--orange),#e3aa74)}
+.card.red::before{background:linear-gradient(90deg,var(--red),#e2a0a0)}
+.card.blue::before{background:linear-gradient(90deg,var(--blue),#8ab0de)}
+.card h3{
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:1.1px;
+  text-transform:uppercase;
+  color:var(--soft);
+  margin-bottom:10px;
+}
+.kpi-value{
+  font-family:'Fraunces',serif;
+  font-size:34px;
+  line-height:1;
+}
+.kpi-label{font-size:12px;color:var(--muted);margin-top:6px}
+.kpi-trend{margin-top:10px;font-size:11px;font-weight:700}
+.up{color:var(--green)}
+.warn{color:var(--orange)}
+.down{color:var(--red)}
+.map-shell{
+  background:linear-gradient(135deg,#eff5ea 0%,#f4f0df 52%,#fbf7ef 100%);
+  border:1px solid var(--line);
+  border-radius:22px;
+  padding:18px;
+  height:100%;
+}
+.map-header{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap}
+.map-header h3{margin-bottom:4px;color:#33543c}
+.map-header p{font-size:12px;color:var(--muted);max-width:520px}
+.impact-banner{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  background:rgba(182,58,55,.08);
+  border:1px solid rgba(182,58,55,.22);
+  border-radius:16px;
+  padding:10px 12px;
+  font-size:12px;
+  color:#713331;
+}
+.impact-banner strong{color:var(--red)}
+.field-map{
+  position:relative;
+  aspect-ratio:2.2/1;
+  border-radius:20px;
+  overflow:hidden;
+  border:1px solid rgba(94,110,72,.18);
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.05)),
+    repeating-linear-gradient(90deg,rgba(70,104,65,.09) 0 2px, transparent 2px 40px),
+    linear-gradient(135deg,#dce8ca 0%,#d8e1bb 48%,#efe2bc 100%);
+}
+.field-map::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(circle at 15% 22%, rgba(255,255,255,.25), transparent 16%),
+    radial-gradient(circle at 84% 78%, rgba(255,255,255,.18), transparent 18%);
+  pointer-events:none;
+}
+.plot-zone{
+  position:absolute;
+  top:7%;
+  bottom:7%;
+  width:29%;
+  border-radius:20px;
+  border:2px solid;
+  padding:14px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  backdrop-filter:blur(3px);
+  overflow:hidden;
+}
+.plot-1{left:3%;background:rgba(26,119,66,.11);border-color:rgba(26,119,66,.55)}
+.plot-2{left:35%;background:rgba(191,106,34,.1);border-color:rgba(191,106,34,.5)}
+.plot-3{left:67%;background:rgba(182,58,55,.1);border-color:rgba(182,58,55,.55)}
+.plot-tag{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(24,28,23,.78);
+  color:#fff;
+  width:max-content;
+  padding:8px 12px;
+  border-radius:14px;
+}
+.plot-tag b{font-size:13px}
+.plot-tag span{font-size:10px;opacity:.72}
+.plot-status{
+  width:max-content;
+  padding:5px 10px;
+  border-radius:999px;
+  font-size:10px;
+  font-weight:800;
+}
+.healthy{background:var(--green-soft);color:var(--green)}
+.attention{background:var(--orange-soft);color:var(--orange)}
+.critical{background:var(--red-soft);color:var(--red)}
+.sensor-dot{
+  position:absolute;
+  width:42px;height:42px;border-radius:14px;
+  border:1px solid rgba(0,0,0,.08);
+  background:rgba(255,255,255,.94);
+  box-shadow:0 10px 20px rgba(28,32,20,.12);
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;flex-direction:column;
+  gap:1px;
+  font-size:13px;font-weight:800;color:var(--text);
+  transition:.16s;
+}
+.sensor-dot strong{font-size:10px;line-height:1;font-weight:900}
+.sensor-dot span{font-size:8px;line-height:1;opacity:.7}
+.sensor-dot:hover{transform:translateY(-2px) scale(1.05)}
+.sensor-dot::after{
+  content:"";
+  position:absolute;
+  inset:-6px;
+  border-radius:16px;
+  border:2px solid currentColor;
+  opacity:.17;
+  animation:pulse 2s infinite;
+}
+.sensor-good{color:var(--green)}
+.sensor-warn{color:var(--orange)}
+.sensor-critical{color:var(--red)}
+.crop-cluster{
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  pointer-events:none;
+}
+.crop-chip{
+  width:84px;
+  height:84px;
+  border-radius:24px;
+  background:rgba(255,255,255,.28);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:46px;
+  box-shadow:0 8px 18px rgba(28,32,20,.05);
+  opacity:.45;
+}
+@keyframes pulse{0%{transform:scale(.92);opacity:.24}100%{transform:scale(1.2);opacity:0}}
+.legend{
+  display:flex;gap:8px;flex-wrap:wrap;margin-top:14px
+}
+.legend-item{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 10px;border-radius:12px;background:#fff;border:1px solid var(--line);
+  font-size:11px;color:var(--muted);font-weight:600
+}
+.legend-swatch{width:10px;height:10px;border-radius:50%}
+.action-list{display:grid;gap:10px}
+.action-card{
+  border-radius:18px;
+  padding:18px 16px 18px 18px;
+  border:1px solid var(--line);
+  background:linear-gradient(135deg,#fffdf8,#fff);
+}
+.action-card.urgent{border-color:rgba(182,58,55,.22);background:linear-gradient(135deg,#fff7f7,#ffffff)}
+.action-card h4{font-size:21px;line-height:1.05;margin-bottom:6px}
+.action-card p{font-size:11px;color:var(--muted);line-height:1.45}
+.action-meta{margin-top:8px;font-size:11px;font-weight:700}
+.field-card{
+  border:1px solid var(--line);
+  border-radius:20px;
+  padding:18px;
+  background:linear-gradient(180deg,#fff,#fbfaf7);
+}
+.field-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:12px}
+.field-name{font-size:15px;font-weight:800}
+.field-sub{font-size:11px;color:var(--muted)}
+.metric-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.metric{
+  border-radius:12px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  padding:12px;
+}
+.metric-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.metric-head span{display:block;font-size:10px;color:var(--soft);margin-bottom:0}
+.metric-head b{font-size:15px}
+.range{
+  position:relative;
+  height:8px;
+  border-radius:999px;
+  background:#e8e3d8;
+  overflow:visible;
+}
+.range-fill{
+  position:absolute;
+  left:0;
+  top:0;
+  bottom:0;
+  border-radius:999px;
+  background:var(--green);
+}
+.range-dot{
+  position:absolute;
+  top:50%;
+  width:12px;
+  height:12px;
+  border-radius:50%;
+  transform:translate(-50%,-50%);
+  border:2px solid #fff;
+  box-shadow:0 2px 6px rgba(28,32,20,.14);
+  background:var(--green);
+}
+.range-labels{
+  display:flex;
+  justify-content:space-between;
+  gap:8px;
+  margin-top:6px;
+  font-size:9px;
+  color:var(--soft);
+}
+.field-note{
+  margin-top:10px;
+  padding:10px 12px;
+  border-radius:14px;
+  font-size:12px;
+  line-height:1.5;
+}
+.field-note.red{background:var(--red-soft);color:#6d2c2b}
+.field-note.orange{background:var(--orange-soft);color:#70431e}
+.field-note.green{background:var(--green-soft);color:#215033}
+.chart-wrap{height:180px}
+.chart-caption{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5}
+.story-card{
+  border-radius:20px;
+  padding:16px;
+  background:linear-gradient(180deg,#fff,#faf8f2);
+  border:1px solid var(--line);
+}
+.story-step{
+  width:32px;height:32px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--green-soft);color:var(--green);
+  font-size:14px;font-weight:800;margin-bottom:10px
+}
+.story-card h4{font-size:15px;margin-bottom:6px}
+.story-card p{font-size:12px;color:var(--muted);line-height:1.55}
+.toggle-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.toggle{
+  border:1px solid var(--line);
+  background:transparent;
+  padding:6px 10px;
+  border-radius:999px;
+  cursor:pointer;
+  font:inherit;
+  font-size:11px;
+  font-weight:700;
+  color:var(--muted);
+}
+.toggle.active,.toggle:hover{background:var(--green);border-color:var(--green);color:#fff}
+.insight-box{
+  margin-top:12px;
+  padding:12px 14px;
+  border-radius:16px;
+  background:var(--green-soft);
+  color:#154628;
+  font-size:12px;
+  line-height:1.55;
+}
+table{width:100%;border-collapse:collapse}
+th{
+  font-size:10px;
+  color:var(--soft);
+  text-transform:uppercase;
+  letter-spacing:.8px;
+  text-align:left;
+  padding:10px 8px;
+  border-bottom:1px solid var(--line);
+}
+td{
+  padding:11px 8px;
+  font-size:12px;
+  border-bottom:1px solid #f0ece3;
+}
+.crop-pill{
+  display:inline-block;
+  padding:4px 8px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:700;
+}
+.mini-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px}
+.mini-kpi{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:10px;
+  text-align:center;
+}
+.mini-kpi span{display:block;font-size:10px;color:var(--soft)}
+.mini-kpi b{font-size:16px}
+.crop-summary{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px
+}
+.crop-box{
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:14px;
+  background:#fff;
+}
+.crop-box h4{font-size:15px;margin-bottom:6px}
+.crop-box p{font-size:12px;color:var(--muted);line-height:1.55}
+.crop-box .target{
+  margin-top:12px;
+  padding:10px 12px;
+  border-radius:14px;
+  font-family:'Fraunces',serif;
+  font-size:24px;
+  text-align:center;
+}
+.sensor-cluster{display:grid;gap:12px}
+.cluster-card{
+  border:1px solid var(--line);
+  border-radius:20px;
+  padding:16px;
+  background:#fff;
+}
+.cluster-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px}
+.cluster-name{font-size:15px;font-weight:800}
+.node-list{display:grid;gap:10px}
+.node{
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:12px;
+  background:linear-gradient(180deg,#fff,#faf8f2);
+}
+.node-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.node-id{font-size:13px;font-weight:800}
+.node-type{font-size:11px;color:var(--muted)}
+.node-badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chip{
+  padding:4px 8px;
+  border-radius:999px;
+  font-size:10px;
+  font-weight:700;
+}
+.chip.green{background:var(--green-soft);color:var(--green)}
+.chip.orange{background:var(--orange-soft);color:var(--orange)}
+.chip.red{background:var(--red-soft);color:var(--red)}
+.node-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}
+.node-stat{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:8px;
+}
+.node-stat span{display:block;font-size:9px;color:var(--soft)}
+.node-stat b{font-size:13px}
+.sensor-type-list{display:grid;gap:12px}
+.sensor-left-stack{display:grid;gap:12px}
+.sensor-type-card{
+  border:1px solid var(--line);
+  border-radius:20px;
+  padding:16px;
+  background:#fff;
+}
+.sensor-type-card.hidden{display:none}
+.sensor-type-card .toggle-row{
+  margin-bottom:14px;
+}
+.sensor-type-header{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:flex-start;
+  margin-bottom:12px;
+}
+.sensor-type-title{
+  font-size:16px;
+  font-weight:800;
+}
+.sensor-type-copy{
+  font-size:12px;
+  color:var(--muted);
+  margin-top:2px;
+}
+.sensor-count{
+  padding:5px 10px;
+  border-radius:999px;
+  background:var(--blue-soft);
+  color:var(--blue);
+  font-size:10px;
+  font-weight:800;
+  white-space:nowrap;
+}
+.sensor-entry-list{display:grid;gap:10px}
+.sensor-entry{
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:12px;
+  background:linear-gradient(180deg,#fff,#faf8f2);
+}
+.sensor-entry-top{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  align-items:flex-start;
+}
+.sensor-entry-name{
+  font-size:13px;
+  font-weight:800;
+}
+.sensor-entry-sub{
+  font-size:11px;
+  color:var(--muted);
+  margin-top:2px;
+}
+.plot-chip{
+  display:inline-flex;
+  align-items:center;
+  padding:4px 8px;
+  border-radius:999px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  font-size:10px;
+  font-weight:700;
+  color:var(--muted);
+  white-space:nowrap;
+}
+.sensor-entry-grid{
+  display:grid;
+  grid-template-columns:minmax(0,1.35fr) repeat(2,minmax(0,.85fr));
+  gap:8px;
+  margin-top:10px;
+}
+.sensor-cell{
+  background:linear-gradient(180deg,#fff,#faf8f2);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:8px;
+}
+.sensor-cell span{
+  display:block;
+  font-size:9px;
+  color:var(--soft);
+}
+.sensor-cell b{
+  font-size:13px;
+}
+.sensor-compare{
+  background:linear-gradient(135deg,#f5fbff,#fff);
+  border-color:#d7e5f8;
+}
+.compare-values{
+  display:flex;
+  align-items:baseline;
+  gap:8px;
+  margin-top:4px;
+}
+.compare-values b{
+  font-size:19px;
+  line-height:1;
+}
+.compare-values small{
+  font-size:11px;
+  color:var(--muted);
+  font-weight:700;
+}
+.sensor-side{
+  display:grid;
+  gap:12px;
+  align-content:start;
+}
+.sensor-side-top{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+.ndvi-frame{
+  border:1px solid var(--line);
+  border-radius:18px;
+  overflow:hidden;
+  background:#111;
+}
+.ndvi-frame svg{
+  display:block;
+  width:100%;
+  height:auto;
+}
+.side-stack{
+  display:grid;
+  grid-template-rows:auto minmax(0,1fr) auto;
+  gap:12px;
+  height:100%;
+  align-content:start;
+}
+.side-stack > .card{
+  display:flex;
+  flex-direction:column;
+}
+.side-stack > .card .chart-wrap{
+  flex:1;
+}
+.maintenance-item{
+  border-left:4px solid var(--orange);
+  background:linear-gradient(135deg,#fff8ee,#fff);
+  border-radius:16px;
+  padding:12px 14px;
+}
+.maintenance-item.red{border-left-color:var(--red);background:linear-gradient(135deg,#fff6f6,#fff)}
+.maintenance-item h4{font-size:14px;margin-bottom:4px}
+.maintenance-item p{font-size:12px;color:var(--muted);line-height:1.5}
+.sensor-panel{
+  background:linear-gradient(135deg,#f7fbff,#ffffff);
+  border:1px solid var(--line);
+  border-radius:20px;
+  padding:16px;
+}
+.sensor-panel h4{font-size:15px;margin-bottom:10px}
+.sensor-panel p{font-size:12px;color:var(--muted);line-height:1.55}
+.stack-list{display:grid;gap:8px;margin-top:12px}
+.stack-item{
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:10px 12px;
+  background:#fff;
+}
+.stack-item strong{display:block;font-size:16px;line-height:1.1;margin-bottom:4px}
+.stack-item p{font-size:13px;line-height:1.35;color:var(--muted)}
+.water-total{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:12px;
+}
+.water-total b{
+  font-family:'Fraunces',serif;
+  font-size:30px;
+  line-height:1;
+}
+.water-total span{
+  font-size:11px;
+  color:var(--muted);
+}
+.water-list{display:grid;gap:10px}
+.water-list{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+}
+.water-ring-card{
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:12px 10px;
+  background:linear-gradient(180deg,#fff,#f7fbff);
+  text-align:center;
+}
+.water-ring{
+  --fill:50%;
+  --ring:#245b9f;
+  width:92px;
+  height:92px;
+  margin:0 auto 10px;
+  border-radius:50%;
+  background:
+    radial-gradient(circle at center, #fff 56%, transparent 57%),
+    conic-gradient(var(--ring) 0 var(--fill), #d7e5f8 var(--fill) 100%);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.04);
+}
+.water-ring span{
+  font-family:'Fraunces',serif;
+  font-size:24px;
+  line-height:1;
+}
+.water-ring-card strong{
+  display:block;
+  font-size:13px;
+  margin-bottom:2px;
+}
+.water-ring-card small{
+  display:block;
+  font-size:11px;
+  color:var(--muted);
+}
+.modal-backdrop{
+  position:fixed;
+  inset:0;
+  background:rgba(22,21,18,.38);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:60;
+}
+.modal-backdrop.show{display:flex}
+.modal{
+  width:min(420px,92vw);
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:22px;
+  box-shadow:0 22px 60px rgba(25,23,19,.22);
+  padding:18px;
+}
+.modal-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:10px}
+.modal h4{font-size:17px}
+.close-btn{
+  border:0;background:transparent;font-size:20px;cursor:pointer;color:var(--soft)
+}
+.modal-body{display:grid;gap:8px}
+.modal-row{
+  display:flex;justify-content:space-between;gap:10px;
+  padding:9px 0;border-bottom:1px solid #f0ece3;font-size:12px
+}
+.modal-row:last-child{border-bottom:0}
+.modal-note{
+  padding:10px 12px;border-radius:14px;background:var(--orange-soft);color:#6f401d;
+  font-size:12px;line-height:1.5;margin-top:8px
+}
+.footer-note{
+  text-align:center;
+  font-size:11px;
+  color:var(--soft);
+  margin-top:18px;
+}
+@media (max-width:1180px){
+  .grid.kpis,.grid.cards3,.grid.story,.crop-summary,.node-grid,.mini-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .grid.main,.grid.context,.grid.sensors,.grid.charts2{grid-template-columns:1fr}
+}
+@media (max-width:760px){
+  body{overflow:auto}
+  .topbar{padding:0 14px;height:auto;min-height:var(--header);align-items:flex-start;flex-direction:column;justify-content:center;padding-top:10px;padding-bottom:10px}
+  .sidebar{
+    position:static;width:auto;height:auto;border-right:0;border-bottom:1px solid var(--line);
+    flex-direction:row;justify-content:center;padding:10px;margin-top:74px
+  }
+  .content{margin:0;height:auto}
+  .page{padding:14px 14px 34px}
+  .grid.kpis,.grid.cards3,.grid.story,.crop-summary,.mini-kpis,.node-grid{grid-template-columns:1fr}
+  .field-map{aspect-ratio:auto;min-height:420px}
+  .plot-zone{position:relative;left:auto!important;top:auto;bottom:auto;width:auto;height:auto;min-height:110px;margin:10px}
+  .field-map{display:flex;flex-direction:column;padding:6px}
+  .sensor-dot{display:none}
+}
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">AG</div>
+      <div class="brand-copy">
+        <h1>AgriMonitor</h1>
+        <p>Singapore 30 by 30 pilot for crop-aware field monitoring</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <div class="badge">12 sensors online</div>
+      <div class="badge alert">2 action items now</div>
+      <div class="meta-chip">10:15 AM sync</div>
+    </div>
+  </header>
+
+  <aside class="sidebar">
+    <button class="nav-btn active" data-page="operations" onclick="showPage('operations', this)">
+      <svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5 9.5V21h14V9.5"></path></svg>
+      <span>Operations</span>
+    </button>
+    <button class="nav-btn" data-page="sensors" onclick="showPage('sensors', this)">
+      <svg viewBox="0 0 24 24"><path d="M12 5v14"></path><path d="M8 9a4 4 0 0 1 8 0"></path><path d="M5 19h14"></path></svg>
+      <span>Sensors</span>
+    </button>
+  </aside>
+
+  <main class="content">
+    <section class="page active" id="operations">
+      <div class="section-head">
+        <div>
+          <h2>Field Command Dashboard</h2>
+        </div>
+      </div>
+
+      <div class="grid kpis">
+        <div class="card">
+          <h3>Temperature</h3>
+          <div class="kpi-value" style="color:var(--green)">29.4°C</div>
+          <div class="kpi-label">Field average</div>
+          <div class="kpi-trend up">Within 27-31°C target</div>
+        </div>
+        <div class="card orange">
+          <h3>Humidity</h3>
+          <div class="kpi-value" style="color:var(--orange)">72%</div>
+          <div class="kpi-label">Field average</div>
+          <div class="kpi-trend up">Above 65% threshold</div>
+        </div>
+        <div class="card red">
+          <h3>Rainfall</h3>
+          <div class="kpi-value" style="color:var(--red)">3.2 mm</div>
+          <div class="kpi-label">Today</div>
+          <div class="kpi-trend warn">Light rainfall</div>
+        </div>
+        <div class="card blue">
+          <h3>Alerts</h3>
+          <div class="kpi-value" style="color:var(--blue)">2</div>
+          <div class="kpi-label">1 warning, 1 critical</div>
+          <div class="kpi-trend down">Field 3 active</div>
+        </div>
+      </div>
+
+      <div class="grid main">
+        <div class="map-shell">
+          <div class="map-header">
+            <div>
+              <h3>Live Plot Map</h3>
+            </div>
+          </div>
+
+          <div class="field-map">
+            <div class="plot-zone plot-1">
+              <div class="plot-tag"><div>F1</div><div><b>Field 1</b><span> Yam</span></div></div>
+              <div class="crop-cluster">
+                <div class="crop-chip">🌿</div>
+              </div>
+              <div class="plot-status healthy">Healthy - 49.2% moisture</div>
+            </div>
+            <div class="plot-zone plot-2">
+              <div class="plot-tag"><div>F2</div><div><b>Field 2</b><span> Ber</span></div></div>
+              <div class="crop-cluster">
+                <div class="crop-chip">🍈</div>
+              </div>
+              <div class="plot-status attention">Attention - pH correction</div>
+            </div>
+            <div class="plot-zone plot-3">
+              <div class="plot-tag"><div>F3</div><div><b>Field 3</b><span> Snake gourd</span></div></div>
+              <div class="crop-cluster">
+                <div class="crop-chip">🥒</div>
+              </div>
+              <div class="plot-status critical">Critical - moisture + EC</div>
+            </div>
+
+            <button class="sensor-dot sensor-good" style="left:7%;top:20%" onclick="openSensor('S1','Field 1 - Yam','Soil pH','6.53','6.55','Good','90%','24 days','pH is within the expected operating range.')"><strong>🧪</strong><span>pH</span></button>
+            <button class="sensor-dot sensor-good" style="left:15%;top:34%" onclick="openSensor('S3','Field 1 - Yam','Soil moisture','49.2%','50.0%','Good','92%','24 days','Moisture is close to the target range.')"><strong>💧</strong><span>H2O</span></button>
+            <button class="sensor-dot sensor-good" style="left:25%;top:23%" onclick="openSensor('S4','Field 1 - Yam','Sap flow','Normal','Normal','Good','88%','24 days','Sap flow confirms stable plant hydration.')"><strong>🍃</strong><span>Sap</span></button>
+            <button class="sensor-dot sensor-good" style="left:23%;top:64%" onclick="openSensor('S5','Field 1 - Yam','Temperature','29.4°C','35.0°C','Good','85%','23 days','Temperature remains within the crop operating band.')"><strong>🌡️</strong><span>Temp</span></button>
+            <button class="sensor-dot sensor-warn" style="left:38%;top:20%" onclick="openSensor('S6','Field 2 - Ber','Soil pH','5.92','6.53','Warning','81%','21 days','Apply lime at the local zone, then recheck after 48 hours.')"><strong>🧪</strong><span>pH</span></button>
+            <button class="sensor-dot sensor-good" style="left:48%;top:67%" onclick="openSensor('S7','Field 2 - Ber','Electrical conductivity','1.74 dS/m','1.747 dS/m','Good','86%','21 days','Electrical conductivity is within the expected range.')"><strong>⚡</strong><span>EC</span></button>
+            <button class="sensor-dot sensor-good" style="left:58%;top:25%" onclick="openSensor('S8','Field 2 - Ber','Soil moisture','46.8%','47.3%','Good','83%','21 days','Moisture remains close to the crop target.')"><strong>💧</strong><span>H2O</span></button>
+            <button class="sensor-dot sensor-good" style="left:60%;top:56%" onclick="openSensor('S9','Field 2 - Ber','Temperature','28.9°C','28.2°C','Good','80%','20 days','Temperature remains acceptable for this plot.')"><strong>🌡️</strong><span>Temp</span></button>
+            <button class="sensor-dot sensor-critical" style="left:71%;top:21%" onclick="openSensor('S10','Field 3 - Snake gourd','Electrical conductivity','1.55 dS/m','1.730 dS/m','Critical','39%','9 days','Electrical conductivity remains below target and should be corrected with fertigation.')"><strong>⚡</strong><span>EC</span></button>
+            <button class="sensor-dot sensor-critical" style="left:86%;top:56%" onclick="openSensor('S11','Field 3 - Snake gourd','Soil moisture','34.7%','43.1%','Critical','72%','18 days','Moisture remains below target and should be corrected immediately.')"><strong>💧</strong><span>H2O</span></button>
+            <button class="sensor-dot sensor-good" style="left:78%;top:67%" onclick="openSensor('S12','Field 3 - Snake gourd','Soil pH','6.49','6.51','Good','76%','18 days','pH remains close to the crop target.')"><strong>🧪</strong><span>pH</span></button>
+            <button class="sensor-dot sensor-warn" style="left:90%;top:22%" onclick="openSensor('S13','Field 3 - Snake gourd','Temperature','30.8°C','29.2°C','Warning','74%','17 days','Temperature is elevated and should be watched during recovery.')"><strong>🌡️</strong><span>Temp</span></button>
+          </div>
+
+          <div class="legend">
+            <div class="legend-item"><span class="legend-swatch" style="background:var(--green)"></span> Healthy node</div>
+            <div class="legend-item"><span class="legend-swatch" style="background:var(--orange)"></span> Warning node</div>
+            <div class="legend-item"><span class="legend-swatch" style="background:var(--red)"></span> Critical node</div>
+            <div class="legend-item">Battery and maintenance window open on click</div>
+          </div>
+        </div>
+
+        <div class="side-stack">
+          <div class="card red">
+            <h3>Farmer Actions for Today</h3>
+            <div class="action-list">
+              <div class="action-card urgent">
+                <h4>Field 3 moisture low</h4>
+                <p>Immediate irrigation required. S11 reads 34.7% against a 43.1% target.</p>
+              </div>
+              <div class="action-card urgent">
+                <h4>Field 3 EC low</h4>
+                <p>Apply fertigation with irrigation. S10 reads 1.55 against a 1.730 target.</p>
+              </div>
+              <div class="action-card">
+                <h4>Field 2 pH low</h4>
+                <p>Apply lime at S6 and reassess after 48 hours.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="card blue">
+            <h3>Projected Yield</h3>
+            <div class="chart-wrap" style="height:280px"><canvas id="projectedYield"></canvas></div>
+          </div>
+
+          <div class="card orange">
+            <h3>Total Water Used for Irrigation</h3>
+            <div class="water-total">
+              <div>
+                <b style="color:var(--orange)">18.6 m<sup>3</sup></b>
+                <span>Today's applied irrigation volume</span>
+              </div>
+              <span>Across 3 active plots</span>
+            </div>
+            <div class="water-list">
+              <div class="water-ring-card">
+                <div class="water-ring" style="--fill:30%;--ring:#7bb7f0"><span style="color:#7bb7f0">30%</span></div>
+                <strong>Field 1</strong>
+                <small>3.7 m<sup>3</sup> used</small>
+              </div>
+              <div class="water-ring-card">
+                <div class="water-ring" style="--fill:41%;--ring:#4c9be8"><span style="color:#4c9be8">41%</span></div>
+                <strong>Field 2</strong>
+                <small>5.1 m<sup>3</sup> used</small>
+              </div>
+              <div class="water-ring-card">
+                <div class="water-ring" style="--fill:78%;--ring:#2d7dd2"><span style="color:#2d7dd2">78%</span></div>
+                <strong>Field 3</strong>
+                <small>9.8 m<sup>3</sup> used</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid cards3" style="margin-top:22px">
+        <div class="field-card">
+          <div class="field-top">
+            <div>
+              <div class="field-name">Field 1 - Yam</div>
+            </div>
+            <span class="plot-status healthy">Healthy</span>
+          </div>
+          <div class="metric-grid">
+            <div class="metric">
+              <div class="metric-head"><span>pH</span><b style="color:var(--green)">6.53</b></div>
+              <div class="range"><div class="range-fill" style="width:51%;background:var(--green)"></div><div class="range-dot" style="left:51%;background:var(--green)"></div></div>
+              <div class="range-labels"><span>5.0</span><span>8.0</span></div>
+            </div>
+            <div class="metric">
+              <div class="metric-head"><span>Soil Temp</span><b style="color:var(--green)">29.4°C</b></div>
+              <div class="range"><div class="range-fill" style="width:63%;background:var(--green)"></div><div class="range-dot" style="left:63%;background:var(--green)"></div></div>
+              <div class="range-labels"><span>20°C</span><span>35°C</span></div>
+            </div>
+            <div class="metric">
+              <div class="metric-head"><span>EC</span><b style="color:var(--green)">1.72</b></div>
+              <div class="range"><div class="range-fill" style="width:48%;background:var(--green)"></div><div class="range-dot" style="left:48%;background:var(--green)"></div></div>
+              <div class="range-labels"><span>1.0</span><span>2.5</span></div>
+            </div>
+            <div class="metric">
+              <div class="metric-head"><span>Moisture</span><b style="color:var(--green)">49.2%</b></div>
+              <div class="range"><div class="range-fill" style="width:77%;background:var(--green)"></div><div class="range-dot" style="left:77%;background:var(--green)"></div></div>
+              <div class="range-labels"><span>30%</span><span>55%</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="field-card">
+          <div class="field-top">
+            <div>
+              <div class="field-name">Field 2 - Ber</div>
+            </div>
+            <span class="plot-status attention">Attention</span>
+          </div>
+          <div class="metric-grid">
+            <div class="metric">
+              <div class="metric-head"><span>pH</span><b style="color:var(--orange)">5.92</b></div>
+              <div class="range"><div class="range-fill" style="width:31%;background:var(--orange)"></div><div class="range-dot" style="left:31%;background:var(--orange)"></div></div>
+              <div class="range-labels"><span>5.0</span><span>8.0</span></div>
+            </div>
+            <div class="metric">
+              <div class="metric-head"><span>Soil Temp</span><b style="color:var(--green)">28.9°C</b></div>
+              <div class="range"><div class="range-fill" style="width:59%;background:var(--green)"></div><div class="range-dot" style="left:59%;background:var(--green)"></div></div>
+              <div class="range-labels"><span>20°C</span><span>35°C</span></div>
+            </div>
+            <div class="metric">
+              <div class="metric-head"><span>EC</span><b style="color:var(--green)">1.74</b></div>
+              <div class="range"><div class="range-fill" style="width:49%;background:var(--green)"></div><div class="range-dot" style="left:49%;background:var(--green)"></div></div>
+              <div class="range-labels"><span>1.0</span><span>2.5</span></div>
+            </div>
+            <div class="metric">
+              <div class="metric-head"><span>Moisture</span><b style="color:var(--green)">46.8%</b></div>
+              <div class="range"><div class="range-fill" style="width:67%;background:var(--green)"></div><div class="range-dot" style="left:67%;background:var(--green)"></div></div>
+              <div class="range-labels"><span>30%</span><span>55%</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="field-card">
+          <div class="field-top">
+            <div>
+              <div class="field-name">Field 3 - Snake Gourd</div>
+            </div>
+            <span class="plot-status critical">Critical</span>
+          </div>
+          <div class="metric-grid">
+            <div class="metric">
+              <div class="metric-head"><span>pH</span><b style="color:var(--green)">6.49</b></div>
+              <div class="range"><div class="range-fill" style="width:50%;background:var(--green)"></div><div class="range-dot" style="left:50%;background:var(--green)"></div></div>
+              <div class="range-labels"><span>5.0</span><span>8.0</span></div>
+            </div>
+            <div class="metric">
+              <div class="metric-head"><span>Soil Temp</span><b style="color:var(--orange)">30.8°C</b></div>
+              <div class="range"><div class="range-fill" style="width:72%;background:var(--orange)"></div><div class="range-dot" style="left:72%;background:var(--orange)"></div></div>
+              <div class="range-labels"><span>20°C</span><span>35°C</span></div>
+            </div>
+            <div class="metric">
+              <div class="metric-head"><span>EC</span><b style="color:var(--orange)">1.55</b></div>
+              <div class="range"><div class="range-fill" style="width:37%;background:var(--orange)"></div><div class="range-dot" style="left:37%;background:var(--orange)"></div></div>
+              <div class="range-labels"><span>1.0</span><span>2.5</span></div>
+            </div>
+            <div class="metric">
+              <div class="metric-head"><span>Moisture</span><b style="color:var(--red)">34.7%</b></div>
+              <div class="range"><div class="range-fill" style="width:19%;background:var(--red)"></div><div class="range-dot" style="left:19%;background:var(--red)"></div></div>
+              <div class="range-labels"><span>30%</span><span>55%</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <section class="page" id="sensors">
+      <div class="section-head">
+        <div>
+          <h2>Sensor Operations</h2>
+        </div>
+      </div>
+
+      <div class="grid kpis" style="grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:14px">
+        <div class="card">
+          <h3>Nodes Online</h3>
+          <div class="kpi-value" style="color:var(--green)">12 / 12</div>
+          <div class="kpi-label">Full coverage across the three plots and one weather mast.</div>
+        </div>
+        <div class="card orange">
+          <h3>Battery Watchlist</h3>
+          <div class="kpi-value" style="color:var(--orange)">1</div>
+          <div class="kpi-label">S10 is below the preferred maintenance threshold.</div>
+        </div>
+        <div class="card red">
+          <h3>Critical Readings</h3>
+          <div class="kpi-value" style="color:var(--red)">2</div>
+          <div class="kpi-label">S10 and S11 both influence the current Field 3 intervention.</div>
+        </div>
+      </div>
+
+      <div class="grid sensors">
+        <div class="sensor-left-stack">
+          <div class="sensor-type-list">
+            <div class="sensor-type-card" data-sensor-type="temp">
+            <h3>Sensor Categories</h3>
+            <div class="toggle-row" id="sensorTypeToggles">
+              <button class="toggle active" onclick="showSensorType('temp', this)">Temp</button>
+              <button class="toggle" onclick="showSensorType('moisture', this)">Moisture</button>
+              <button class="toggle" onclick="showSensorType('ph', this)">pH</button>
+              <button class="toggle" onclick="showSensorType('ec', this)">EC</button>
+            </div>
+            <div class="sensor-type-header">
+              <div>
+                <div class="sensor-type-title">Temperature Sensors</div>
+                <div class="sensor-type-copy">Live temperature nodes grouped by device type.</div>
+              </div>
+              <span class="sensor-count">3 sensors</span>
+            </div>
+            <div class="sensor-entry-list">
+              <div class="sensor-entry">
+                <div class="sensor-entry-top">
+                  <div>
+                    <div class="sensor-entry-name">S5</div>
+                    <div class="sensor-entry-sub">Temperature sensor</div>
+                  </div>
+                  <span class="plot-chip">Field 1 - Yam</span>
+                </div>
+                <div class="sensor-entry-grid">
+                  <div class="sensor-cell sensor-compare"><span>Reading / Target</span><div class="compare-values"><b>29.4°C</b><small>of 35.0°C</small></div></div>
+                  <div class="sensor-cell"><span>Battery</span><b>85%</b></div>
+                  <div class="sensor-cell"><span>Status</span><b style="color:var(--green)">Good</b></div>
+                </div>
+              </div>
+              <div class="sensor-entry">
+                <div class="sensor-entry-top">
+                  <div>
+                    <div class="sensor-entry-name">S9</div>
+                    <div class="sensor-entry-sub">Temperature sensor</div>
+                  </div>
+                  <span class="plot-chip">Field 2 - Ber</span>
+                </div>
+                <div class="sensor-entry-grid">
+                  <div class="sensor-cell sensor-compare"><span>Reading / Target</span><div class="compare-values"><b>28.9°C</b><small>of 28.2°C</small></div></div>
+                  <div class="sensor-cell"><span>Battery</span><b>80%</b></div>
+                  <div class="sensor-cell"><span>Status</span><b style="color:var(--green)">Good</b></div>
+                </div>
+              </div>
+              <div class="sensor-entry">
+                <div class="sensor-entry-top">
+                  <div>
+                    <div class="sensor-entry-name">S13</div>
+                    <div class="sensor-entry-sub">Temperature sensor</div>
+                  </div>
+                  <span class="plot-chip">Field 3 - Snake Gourd</span>
+                </div>
+                <div class="sensor-entry-grid">
+                  <div class="sensor-cell sensor-compare"><span>Reading / Target</span><div class="compare-values"><b>30.8°C</b><small>of 29.2°C</small></div></div>
+                  <div class="sensor-cell"><span>Battery</span><b>74%</b></div>
+                  <div class="sensor-cell"><span>Status</span><b style="color:var(--orange)">Warning</b></div>
+                </div>
+              </div>
+            </div>
+            </div>
+
+            <div class="sensor-type-card hidden" data-sensor-type="moisture">
+            <h3>Sensor Categories</h3>
+            <div class="toggle-row" id="sensorTypeToggles">
+              <button class="toggle" onclick="showSensorType('temp', this)">Temp</button>
+              <button class="toggle active" onclick="showSensorType('moisture', this)">Moisture</button>
+              <button class="toggle" onclick="showSensorType('ph', this)">pH</button>
+              <button class="toggle" onclick="showSensorType('ec', this)">EC</button>
+            </div>
+            <div class="sensor-type-header">
+              <div>
+                <div class="sensor-type-title">Moisture Sensors</div>
+                <div class="sensor-type-copy">Soil moisture readings used for irrigation decisions.</div>
+              </div>
+              <span class="sensor-count">3 sensors</span>
+            </div>
+            <div class="sensor-entry-list">
+              <div class="sensor-entry">
+                <div class="sensor-entry-top">
+                  <div>
+                    <div class="sensor-entry-name">S3</div>
+                    <div class="sensor-entry-sub">Soil moisture probe</div>
+                  </div>
+                  <span class="plot-chip">Field 1 - Yam</span>
+                </div>
+                <div class="sensor-entry-grid">
+                  <div class="sensor-cell sensor-compare"><span>Reading / Target</span><div class="compare-values"><b>49.2%</b><small>of 50.0%</small></div></div>
+                  <div class="sensor-cell"><span>Battery</span><b>92%</b></div>
+                  <div class="sensor-cell"><span>Status</span><b style="color:var(--green)">Good</b></div>
+                </div>
+              </div>
+              <div class="sensor-entry">
+                <div class="sensor-entry-top">
+                  <div>
+                    <div class="sensor-entry-name">S8</div>
+                    <div class="sensor-entry-sub">Soil moisture probe</div>
+                  </div>
+                  <span class="plot-chip">Field 2 - Ber</span>
+                </div>
+                <div class="sensor-entry-grid">
+                  <div class="sensor-cell sensor-compare"><span>Reading / Target</span><div class="compare-values"><b>46.8%</b><small>of 47.3%</small></div></div>
+                  <div class="sensor-cell"><span>Battery</span><b>83%</b></div>
+                  <div class="sensor-cell"><span>Status</span><b style="color:var(--green)">Good</b></div>
+                </div>
+              </div>
+              <div class="sensor-entry">
+                <div class="sensor-entry-top">
+                  <div>
+                    <div class="sensor-entry-name">S11</div>
+                    <div class="sensor-entry-sub">Soil moisture probe</div>
+                  </div>
+                  <span class="plot-chip">Field 3 - Snake Gourd</span>
+                </div>
+                <div class="sensor-entry-grid">
+                  <div class="sensor-cell sensor-compare"><span>Reading / Target</span><div class="compare-values"><b>34.7%</b><small>of 43.1%</small></div></div>
+                  <div class="sensor-cell"><span>Battery</span><b>72%</b></div>
+                  <div class="sensor-cell"><span>Status</span><b style="color:var(--red)">Critical</b></div>
+                </div>
+              </div>
+            </div>
+            </div>
+
+            <div class="sensor-type-card hidden" data-sensor-type="ph">
+            <h3>Sensor Categories</h3>
+            <div class="toggle-row" id="sensorTypeToggles">
+              <button class="toggle" onclick="showSensorType('temp', this)">Temp</button>
+              <button class="toggle" onclick="showSensorType('moisture', this)">Moisture</button>
+              <button class="toggle active" onclick="showSensorType('ph', this)">pH</button>
+              <button class="toggle" onclick="showSensorType('ec', this)">EC</button>
+            </div>
+            <div class="sensor-type-header">
+              <div>
+                <div class="sensor-type-title">pH Sensors</div>
+                <div class="sensor-type-copy">pH nodes used to track soil chemistry stability.</div>
+              </div>
+              <span class="sensor-count">3 sensors</span>
+            </div>
+            <div class="sensor-entry-list">
+              <div class="sensor-entry">
+                <div class="sensor-entry-top">
+                  <div>
+                    <div class="sensor-entry-name">S1</div>
+                    <div class="sensor-entry-sub">Soil pH electrode</div>
+                  </div>
+                  <span class="plot-chip">Field 1 - Yam</span>
+                </div>
+                <div class="sensor-entry-grid">
+                  <div class="sensor-cell sensor-compare"><span>Reading / Target</span><div class="compare-values"><b>6.53</b><small>of 6.55</small></div></div>
+                  <div class="sensor-cell"><span>Battery</span><b>90%</b></div>
+                  <div class="sensor-cell"><span>Status</span><b style="color:var(--green)">Good</b></div>
+                </div>
+              </div>
+              <div class="sensor-entry">
+                <div class="sensor-entry-top">
+                  <div>
+                    <div class="sensor-entry-name">S6</div>
+                    <div class="sensor-entry-sub">Soil pH electrode</div>
+                  </div>
+                  <span class="plot-chip">Field 2 - Ber</span>
+                </div>
+                <div class="sensor-entry-grid">
+                  <div class="sensor-cell sensor-compare"><span>Reading / Target</span><div class="compare-values"><b>5.92</b><small>of 6.53</small></div></div>
+                  <div class="sensor-cell"><span>Battery</span><b>81%</b></div>
+                  <div class="sensor-cell"><span>Status</span><b style="color:var(--orange)">Warning</b></div>
+                </div>
+              </div>
+              <div class="sensor-entry">
+                <div class="sensor-entry-top">
+                  <div>
+                    <div class="sensor-entry-name">S12</div>
+                    <div class="sensor-entry-sub">Soil pH electrode</div>
+                  </div>
+                  <span class="plot-chip">Field 3 - Snake Gourd</span>
+                </div>
+                <div class="sensor-entry-grid">
+                  <div class="sensor-cell sensor-compare"><span>Reading / Target</span><div class="compare-values"><b>6.49</b><small>of 6.51</small></div></div>
+                  <div class="sensor-cell"><span>Battery</span><b>76%</b></div>
+                  <div class="sensor-cell"><span>Status</span><b style="color:var(--green)">Good</b></div>
+                </div>
+              </div>
+            </div>
+            </div>
+
+            <div class="sensor-type-card hidden" data-sensor-type="ec">
+            <h3>Sensor Categories</h3>
+            <div class="toggle-row" id="sensorTypeToggles">
+              <button class="toggle" onclick="showSensorType('temp', this)">Temp</button>
+              <button class="toggle" onclick="showSensorType('moisture', this)">Moisture</button>
+              <button class="toggle" onclick="showSensorType('ph', this)">pH</button>
+              <button class="toggle active" onclick="showSensorType('ec', this)">EC</button>
+            </div>
+            <div class="sensor-type-header">
+              <div>
+                <div class="sensor-type-title">EC Sensors</div>
+                <div class="sensor-type-copy">Conductivity nodes used to track nutrient and fertigation response.</div>
+              </div>
+              <span class="sensor-count">2 sensors</span>
+            </div>
+            <div class="sensor-entry-list">
+              <div class="sensor-entry">
+                <div class="sensor-entry-top">
+                  <div>
+                    <div class="sensor-entry-name">S7</div>
+                    <div class="sensor-entry-sub">EC probe</div>
+                  </div>
+                  <span class="plot-chip">Field 2 - Ber</span>
+                </div>
+                <div class="sensor-entry-grid">
+                  <div class="sensor-cell sensor-compare"><span>Reading / Target</span><div class="compare-values"><b>1.74</b><small>of 1.747</small></div></div>
+                  <div class="sensor-cell"><span>Battery</span><b>86%</b></div>
+                  <div class="sensor-cell"><span>Status</span><b style="color:var(--green)">Good</b></div>
+                </div>
+              </div>
+              <div class="sensor-entry">
+                <div class="sensor-entry-top">
+                  <div>
+                    <div class="sensor-entry-name">S10</div>
+                    <div class="sensor-entry-sub">EC probe</div>
+                  </div>
+                  <span class="plot-chip">Field 3 - Snake Gourd</span>
+                </div>
+                <div class="sensor-entry-grid">
+                  <div class="sensor-cell sensor-compare"><span>Reading / Target</span><div class="compare-values"><b>1.55</b><small>of 1.730</small></div></div>
+                  <div class="sensor-cell"><span>Battery</span><b>39%</b></div>
+                  <div class="sensor-cell"><span>Status</span><b style="color:var(--red)">Critical</b></div>
+                </div>
+              </div>
+            </div>
+            </div>
+          </div>
+
+          <div class="sensor-side-top">
+            <div class="card red">
+              <h3>Immediate Actions Needed</h3>
+              <div class="stack-list">
+                <div class="stack-item">
+                  <strong>Recharge S10 battery</strong>
+                  <p>Restore the Field 3 EC node within 48 hours.</p>
+                </div>
+                <div class="stack-item">
+                  <strong>Recalibrate S6</strong>
+                  <p>Recheck Field 2 pH after liming.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="card blue">
+              <h3>Suggested Sensor to Implement</h3>
+              <div class="stack-list">
+                <div class="stack-item">
+                  <strong>PTAT Temperature Sensor</strong>
+                  <p>Use PTAT for more accurate temperature readings.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sensor-side">
+          <div class="card blue">
+            <h3>NDVI Performance View</h3>
+            <div class="ndvi-frame">
+              <svg viewBox="0 0 900 760" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="NDVI performance map">
+                <defs>
+                  <radialGradient id="fieldA" cx="35%" cy="35%" r="70%">
+                    <stop offset="0%" stop-color="#d9ee29"/>
+                    <stop offset="45%" stop-color="#b7d81f"/>
+                    <stop offset="75%" stop-color="#62ba15"/>
+                    <stop offset="100%" stop-color="#32840e"/>
+                  </radialGradient>
+                  <radialGradient id="fieldB" cx="45%" cy="45%" r="75%">
+                    <stop offset="0%" stop-color="#ffd13b"/>
+                    <stop offset="45%" stop-color="#f4a018"/>
+                    <stop offset="75%" stop-color="#cd6f08"/>
+                    <stop offset="100%" stop-color="#6cb51b"/>
+                  </radialGradient>
+                  <radialGradient id="fieldC" cx="40%" cy="45%" r="75%">
+                    <stop offset="0%" stop-color="#c72a0c"/>
+                    <stop offset="45%" stop-color="#e9690c"/>
+                    <stop offset="75%" stop-color="#f39c12"/>
+                    <stop offset="100%" stop-color="#ffd13b"/>
+                  </radialGradient>
+                  <filter id="softNoise">
+                    <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/>
+                    <feColorMatrix type="saturate" values="0"/>
+                    <feComponentTransfer>
+                      <feFuncA type="table" tableValues="0 0.08"/>
+                    </feComponentTransfer>
+                  </filter>
+                </defs>
+                <rect width="900" height="760" fill="#161616"/>
+                <rect width="900" height="760" filter="url(#softNoise)" opacity=".8"/>
+                <ellipse cx="250" cy="180" rx="210" ry="130" fill="url(#fieldA)" opacity=".96"/>
+                <ellipse cx="610" cy="405" rx="220" ry="145" fill="url(#fieldB)" opacity=".96"/>
+                <ellipse cx="180" cy="570" rx="180" ry="120" fill="url(#fieldC)" opacity=".96"/>
+                <ellipse cx="250" cy="180" rx="240" ry="155" fill="none" stroke="#d9d9d9" stroke-dasharray="10 9" opacity=".55"/>
+                <ellipse cx="610" cy="405" rx="250" ry="168" fill="none" stroke="#d9d9d9" stroke-dasharray="10 9" opacity=".55"/>
+                <ellipse cx="180" cy="570" rx="205" ry="138" fill="none" stroke="#d9d9d9" stroke-dasharray="10 9" opacity=".55"/>
+                <g font-family="IBM Plex Sans, sans-serif">
+                  <rect x="92" y="74" width="144" height="42" fill="#1b1b1b" opacity=".86"/>
+                  <text x="102" y="94" fill="#78ff2f" font-size="14" font-weight="700">FIELD A</text>
+                  <text x="102" y="110" fill="#c2c2c2" font-size="12">NDVI 0.72 - Healthy</text>
+
+                  <rect x="520" y="296" width="154" height="42" fill="#1b1b1b" opacity=".86"/>
+                  <text x="530" y="316" fill="#ffe14a" font-size="14" font-weight="700">FIELD B</text>
+                  <text x="530" y="332" fill="#c2c2c2" font-size="12">NDVI 0.45 - Moderate</text>
+
+                  <rect x="60" y="472" width="148" height="42" fill="#1b1b1b" opacity=".86"/>
+                  <text x="70" y="492" fill="#ff6a39" font-size="14" font-weight="700">FIELD C</text>
+                  <text x="70" y="508" fill="#c2c2c2" font-size="12">NDVI 0.28 - Stressed</text>
+
+                  <text x="338" y="726" fill="#9d9d9d" font-size="12">NDVI INDEX</text>
+                  <rect x="336" y="736" width="230" height="12" fill="url(#fieldB)"/>
+                  <text x="310" y="747" fill="#8e8e8e" font-size="12">0.0</text>
+                  <text x="575" y="747" fill="#8e8e8e" font-size="12">1.0</text>
+                  <text x="330" y="762" fill="#ff6a39" font-size="12">Stressed</text>
+                  <text x="430" y="762" fill="#ffd13b" font-size="12">Moderate</text>
+                  <text x="525" y="762" fill="#5ee31f" font-size="12">Healthy</text>
+                </g>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-note">AgriMonitor combines live field control, CA2 evidence, and deployment-state monitoring in one presentation-friendly dashboard.</div>
+    </section>
+  </main>
+
+  <div class="modal-backdrop" id="sensorModal">
+    <div class="modal">
+      <div class="modal-top">
+        <div>
+          <h4 id="modalTitle">Sensor S11</h4>
+          <div style="font-size:12px;color:var(--muted)" id="modalSubtitle">Field 3 - Snake gourd</div>
+        </div>
+        <button class="close-btn" onclick="closeSensorModal()">x</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+<script>
+function showPage(pageId, button){
+  document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+  document.getElementById(pageId).classList.add('active');
+  button.classList.add('active');
+}
+
+function showSensorType(type, button){
+  document.querySelectorAll('#sensorTypeToggles .toggle').forEach(btn => btn.classList.remove('active'));
+  button.classList.add('active');
+  document.querySelectorAll('[data-sensor-type]').forEach(card => {
+    card.classList.toggle('hidden', card.getAttribute('data-sensor-type') !== type);
+  });
+}
+
+function openSensor(sensorId, field, variable, reading, target, status, battery, uptime, note){
+  const modal = document.getElementById('sensorModal');
+  document.getElementById('modalTitle').textContent = sensorId;
+  document.getElementById('modalSubtitle').textContent = field;
+  const statusMap = {
+    Good: '<span class="chip green">Good</span>',
+    Warning: '<span class="chip orange">Warning</span>',
+    Critical: '<span class="chip red">Critical</span>'
+  };
+  document.getElementById('modalBody').innerHTML = `
+    <div class="modal-row"><span>Variable</span><strong>${variable}</strong></div>
+    <div class="modal-row"><span>Current reading</span><strong>${reading}</strong></div>
+    <div class="modal-row"><span>Target</span><strong>${target}</strong></div>
+    <div class="modal-row"><span>Status</span>${statusMap[status]}</div>
+    <div class="modal-row"><span>Battery</span><strong>${battery}</strong></div>
+    <div class="modal-row"><span>Uptime</span><strong>${uptime}</strong></div>
+    <div class="modal-note">${note}</div>
+  `;
+  modal.classList.add('show');
+}
+
+function closeSensorModal(){
+  document.getElementById('sensorModal').classList.remove('show');
+}
+
+document.getElementById('sensorModal').addEventListener('click', function(event){
+  if(event.target === this){
+    closeSensorModal();
+  }
+});
+
+const chartDefaults = {
+  responsive:true,
+  maintainAspectRatio:false,
+  plugins:{
+    legend:{display:false},
+    tooltip:{backgroundColor:'#1f241f',titleColor:'#fff',bodyColor:'#fff',padding:10}
+  },
+  scales:{
+    x:{grid:{display:false},ticks:{color:'#666357',font:{size:10}}},
+    y:{grid:{color:'#ece7dc'},ticks:{color:'#666357',font:{size:10}}}
+  }
+};
+
+new Chart(document.getElementById('projectedYield'), {
+  type:'line',
+  data:{
+    labels:['Now','Day 1','Day 2','Day 3','Day 4','Day 5','Day 6'],
+    datasets:[
+      {
+        label:'Correct now',
+        data:[3200,3650,4080,4460,4690,4810,4880],
+        borderColor:'#1a7742',
+        backgroundColor:'rgba(26,119,66,.08)',
+        borderWidth:3,
+        tension:.34,
+        fill:false,
+        pointRadius:2
+      },
+      {
+        label:'Delay 24h',
+        data:[3200,3100,3380,3720,4010,4260,4410],
+        borderColor:'#bf6a22',
+        backgroundColor:'rgba(191,106,34,.06)',
+        borderWidth:2,
+        tension:.34,
+        fill:false,
+        pointRadius:2
+      },
+      {
+        label:'No action',
+        data:[3200,2860,2540,2260,1990,1780,1600],
+        borderColor:'#b63a37',
+        backgroundColor:'rgba(182,58,55,.16)',
+        borderWidth:3,
+        tension:.34,
+        fill:false,
+        pointRadius:2
+      }
+    ]
+  },
+  options:{
+    ...chartDefaults,
+    plugins:{
+      ...chartDefaults.plugins,
+      legend:{
+        display:true,
+        position:'bottom',
+        labels:{color:'#666357',font:{size:11},boxWidth:10}
+      }
+    },
+    scales:{
+      x:{grid:{display:false},ticks:{color:'#666357',font:{size:10}}},
+      y:{grid:{color:'#ece7dc'},ticks:{color:'#666357',font:{size:10}},min:1500,max:5000,title:{display:true,text:'Yield (kg/ha)',color:'#666357',font:{size:10,weight:'700'}}}
+    }
+  }
+});
+
+</script>
+</body>
+</html>
